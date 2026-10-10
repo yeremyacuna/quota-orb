@@ -31,8 +31,16 @@ test('no weekly window → noweekly', () => {
   assert.strictEqual(weeklyFrom({ primary: { used_percent: 1, window_minutes: 300 } }, NOW).status, 'noweekly');
 });
 
-test('getCodexUsage reads the newest session file under CODEX_HOME', () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-'));
+test('getCodexUsage reads the newest session file under CODEX_HOME', (t) => {
+  const root = path.join(__dirname, '..', '.local', 'tests');
+  fs.mkdirSync(root, { recursive: true });
+  const home = fs.mkdtempSync(path.join(root, 'codex-'));
+  const previousHome = process.env.CODEX_HOME;
+  t.after(() => {
+    if (previousHome === undefined) delete process.env.CODEX_HOME;
+    else process.env.CODEX_HOME = previousHome;
+    fs.rmSync(home, { recursive: true, force: true });
+  });
   const dir = path.join(home, 'sessions', '2026', '10', '09');
   fs.mkdirSync(dir, { recursive: true });
   const future = Math.floor(Date.now() / 1000) + 3 * 86400;

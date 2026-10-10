@@ -4,6 +4,7 @@
   const C = 2 * Math.PI * R;
   const REFRESH_MS = 60 * 1000;
   let last = null;
+  let pending = false;
 
   const colorFor = (p) => (p == null ? '#9ca3af' : p > 40 ? '#34d399' : p >= 15 ? '#fbbf24' : '#f87171');
 
@@ -51,19 +52,22 @@
   }
 
   async function refresh() {
+    if (pending) return;
+    pending = true;
     try {
       const res = await fetch('/api/uso', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Unavailable');
       last = await res.json();
+      document.getElementById('card').classList.remove('stale');
       render(last);
     } catch {
       if (last) {
         document.getElementById('card').classList.add('stale');
         render(last);
       }
-    }
+    } finally { pending = false; }
   }
 
   refresh();
   setInterval(refresh, REFRESH_MS);
-  setInterval(() => { if (last) render(last); }, 30 * 1000); // keep countdowns fresh between fetches
 })();

@@ -15,6 +15,7 @@ const FILES = {
 const CSP = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'";
 
 async function getAll() {
+  if (process.env.QUOTA_ORB_DEMO === '1') return { codex: { status: 'ok', remaining: 63, resetsAt: Date.now() / 1000 + 5 * 86400 + 9 * 3600 + 5 }, claude: { status: 'ok', remaining: 28, resetsAt: Date.now() / 1000 + 3 * 86400 + 3600 + 5 } };
   const [claude] = await Promise.all([getClaudeUsage()]);
   const codex = getCodexUsage();
   return { codex, claude, updatedAt: Date.now() };
@@ -25,6 +26,7 @@ function startServer({ port = 0, onUpdate } = {}) {
     // Anti DNS-rebinding: only accept loopback Host headers.
     const host = (req.headers.host || '').split(':')[0];
     if (host !== '127.0.0.1' && host !== 'localhost') { res.writeHead(403); return res.end(); }
+    if ((req.headers.origin && req.headers.origin !== `http://${req.headers.host}`) || req.headers['sec-fetch-site'] === 'cross-site') { res.writeHead(403); return res.end(); }
     const url = (req.url || '/').split('?')[0];
     const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': CSP };
 

@@ -2,6 +2,7 @@
 
 /** Clamp any value into the 0–100 range (NaN → null). */
 function clampPct(v) {
+  if (v == null || typeof v === 'boolean' || (typeof v === 'string' && !v.trim())) return null;
   const n = Number(v);
   if (!Number.isFinite(n)) return null;
   return Math.max(0, Math.min(100, n));
@@ -32,7 +33,7 @@ function formatReset(resetsAtSec, nowMs = Date.now()) {
 /** Accepts epoch seconds, epoch ms or an ISO string → epoch seconds (or null). */
 function toEpochSeconds(v) {
   if (v == null) return null;
-  if (typeof v === 'number') return v > 1e12 ? Math.floor(v / 1000) : Math.floor(v);
+  if (typeof v === 'number') return Number.isFinite(v) && v > 0 ? (v > 1e12 ? Math.floor(v / 1000) : Math.floor(v)) : null;
   const t = Date.parse(v);
   return Number.isFinite(t) ? Math.floor(t / 1000) : null;
 }

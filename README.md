@@ -1,124 +1,86 @@
-<div align="center">
+# quota-orb
 
-# 🔵 Quota Orb
+Widget de escritorio que muestra el **porcentaje semanal restante** de Codex y Claude. Dos aros, sin botones, sobre las demás ventanas. Electron y Node.js; sin dependencias adicionales de ejecución.
 
-**A tiny floating desktop widget that shows how much weekly usage you have LEFT in Codex and Claude**
+![Widget con datos ficticios](docs/screenshot.png)
 
-Built with Electron · Node.js (zero runtime dependencies) · Simple Icons
+La captura contiene datos ficticios (63 % y 28 %), no datos de una cuenta.
 
-![Tests](https://img.shields.io/github/actions/workflow/status/yeremyacuna/quota-orb/validate.yml?branch=main&style=for-the-badge&label=validation&logo=githubactions&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
-![Electron](https://img.shields.io/badge/Electron-47848F?style=for-the-badge&logo=electron&logoColor=white)
+## Usar en Windows
 
-<img src="docs/screenshot.png" alt="Quota Orb widget" width="280">
+Abre `dist/win-unpacked/Quota Orb.exe` después de compilar. Mantén toda la carpeta `win-unpacked` junta. Al abrir registra el inicio automático para ese ejecutable; si lo mueves, ábrelo otra vez para actualizar el registro. Es una aplicación local sin firma digital.
 
-</div>
+Desde el código fuente, con Node.js y npm:
 
----
-
-## 📑 Table of Contents
-
-- [Overview](#-overview)
-- [Architecture](#️-architecture)
-- [Getting Started](#-getting-started)
-- [Data Sources & Known Pitfalls](#-data-sources--known-pitfalls)
-- [Configuration](#️-configuration)
-- [Project Structure](#-project-structure)
-- [Security & Privacy](#-security--privacy)
-- [Roadmap](#️-roadmap)
-
----
-
-## 📋 Overview
-
-- 140 × 100 px frameless window, always on top, draggable from anywhere, remembers its position.
-- Two rings side by side: **Codex** (white OpenAI logo) and **Claude** (orange `#D97757` logo).
-- A full ring = 100 % left; it empties as you spend. 🟢 > 40 % · 🟡 15–40 % · 🔴 < 15 %.
-- Below each ring: the remaining % and the time to reset (`5 d 9 h`). Weekly limit only.
-- System tray icon: click shows/hides, right click → **Cerrar**. No taskbar icon.
-- Refreshes every minute and starts with your session (login item).
-
-## 🏗️ Architecture
-
-```
-~/.codex/sessions/**/*.jsonl ──┐
-                               ├─> Node server (127.0.0.1, same process) ──> /api/uso ──> index.html
-api.anthropic.com/api/oauth/usage ─┘                                              │
-                                                              IPC (height) ──> Electron window
-```
-
-Details in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
-
-## 🚀 Getting Started
-
-```bash
-git clone https://github.com/yeremyacuna/quota-orb.git
-cd quota-orb
-npm install
+```sh
+npm ci
+# Si falta el binario de Electron:
+node node_modules/electron/install.js
+npm test
 npm start
+npm run dist
 ```
 
-If `npm install` doesn't leave the Electron binary: `node node_modules/electron/install.js`.
+`dist` genera una carpeta ejecutable en Windows. No instala un servicio ni requiere un servidor externo. Para salir: clic derecho en la bandeja → **Cerrar**. Clic izquierdo muestra u oculta. Arrastra desde cualquier punto del widget. La ventana mide aproximadamente 140 × 100 píxeles, con fondo negro al 30 %, borde de 1 píxel y texto con sombra.
 
-Build an installer: `npm run dist`. Run the tests: `npm test`.
+Para desactivar el inicio automático usa Aplicaciones de inicio de Windows. `QUOTA_ORB_NO_AUTOSTART=1` evita volver a registrarlo al abrir desde código. Cerrar el widget no desactiva el inicio automático.
 
-## 🔌 Data Sources & Known Pitfalls
+## Conectar las cuentas
 
-| Source | How | Notes |
-| ------ | --- | ----- |
-| **Codex** | Reads the tail of the newest `~/.codex/sessions/YYYY/MM/DD/*.jsonl` and takes the last `rate_limits` line | No network, no token. The weekly window is the one with `window_minutes = 10080`. If `resets_at` already passed → 100 %. |
-| **Claude** | `GET https://api.anthropic.com/api/oauth/usage` (`weekly_all`) | **Undocumented endpoint — it may change.** Cached 3 minutes. |
+**Codex:** usa Codex normalmente. El widget lee únicamente los últimos 512 KiB de hasta seis archivos de sesión recientes en `$CODEX_HOME/sessions` o `~/.codex/sessions`. Ordena por modificación para incluir conversaciones antiguas retomadas. Busca la ventana de `10080` minutos, independientemente de que sea `primary` o `secondary`. No consulta OpenAI por red. Si no hay ventana semanal disponible, muestra “sin datos”.
 
-**Claude requirements**
+**Claude:** instala el CLI oficial y ejecuta una vez:
 
-- Only using the Claude desktop app? Then `~/.claude/.credentials.json` has no `claudeAiOauth`. Run **`claude auth login`** once in the CLI. Until then the Claude ring shows empty. (On macOS the token lives in the Keychain.) The widget does not look for the token anywhere else.
-- The token lasts 8 hours and only the CLI renews it. When it is about to expire the widget runs
-  `claude -p "ok" --model haiku --strict-mcp-config --mcp-config '{"mcpServers":{}}'` (at most once every 10 minutes) and re-reads the file. **This spends a few tokens, about three times a day.** The widget never implements OAuth refresh itself and never writes to the credentials file.
-- Exclusive-fullscreen games cover the widget; use "windowed fullscreen".
-- ⚠️ The meaning of `percent` in the Claude response (used vs. remaining) is treated as **used**. If your ring looks inverted, set `QUOTA_ORB_CLAUDE_PERCENT=remaining`.
-
-## ⚙️ Configuration
-
-| Variable | Purpose |
-| -------- | ------- |
-| `CODEX_HOME` | Alternative Codex folder (default `~/.codex`) |
-| `CLAUDE_CONFIG_DIR` | Alternative Claude folder (default `~/.claude`) |
-| `QUOTA_ORB_CLAUDE_PERCENT` | `used` (default) or `remaining` |
-| `QUOTA_ORB_NO_AUTOSTART` | Set to skip registering the login item |
-| `QUOTA_ORB_SCREENSHOT` | Path: capture only the window area to a PNG and quit |
-
-## 📁 Project Structure
-
-```
-quota-orb/
-├── .github/workflows/   # CI: tests + secret scan
-├── assets/              # Tray icon
-├── docs/                # Architecture, roadmap, screenshot
-├── src/
-│   ├── main.js          # Window, tray, IPC, autostart
-│   ├── preload.js       # contextBridge (usageBridge)
-│   ├── server.js        # Local HTTP server (127.0.0.1)
-│   ├── codex.js         # Codex session reader
-│   ├── claude.js        # Claude usage client + CLI refresh
-│   ├── lib/format.js    # Colours, countdown, helpers
-│   └── ui/              # index.html · style.css · app.js
-├── test/                # node:test unit tests
-└── tools/make-icon.js   # Generates the tray icon
+```sh
+claude auth login
 ```
 
-## 🔒 Security & Privacy
+Completa tú el acceso en el navegador; no pegues tokens en el proyecto. Tener solamente la aplicación de escritorio no basta. El widget lee exclusivamente `~/.claude/.credentials.json`, campo `claudeAiOauth`; en macOS usa el Llavero, servicio `Claude Code-credentials`. No busca credenciales en otros lugares.
 
-- The server only listens on `127.0.0.1` and rejects foreign `Host` headers.
-- Nothing leaves your machine except the usage query to Anthropic.
-- The Claude token is only held in memory and is **never printed, logged or committed**.
-- Strict CSP, `contextIsolation`, sandboxed renderer.
+El endpoint `https://api.anthropic.com/api/oauth/usage` **no está documentado y puede cambiar**. Todo su parseo está en `src/claude.js`. Admite `seven_day.utilization` como porcentaje usado y el formato alternativo `limits[kind=weekly_all].percent`, asumido usado. Esta última interpretación aún necesita contrastarse con una cuenta real; `QUOTA_ORB_CLAUDE_PERCENT=remaining` invierte solo ese formato antiguo. No interpreta falta de datos como saldo ilimitado.
 
-## 🗺️ Roadmap
+No puede garantizarse compatibilidad con todos los planes gratuitos o de pago: depende de que cada cuenta entregue una ventana semanal y permita acceder a esa fuente. Si no la entrega se muestra un guion.
 
-See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+### Renovación de Claude y consumo
 
----
+Cuando `expiresAt` indica que faltan menos de 15 minutos, se llama al CLI oficial con:
 
-Logos: [Simple Icons](https://simpleicons.org) (CC0). OpenAI and Claude are trademarks of their respective owners; this project is not affiliated with them.
+```sh
+claude -p "ok" --model haiku --strict-mcp-config --mcp-config '{"mcpServers":{}}'
+```
 
-Made with 🤍 by [@yeremyacuna](https://github.com/yeremyacuna)
+En Windows se pasa el mismo JSON mediante un archivo local para evitar problemas de comillas del CLI. **Esto consume unos pocos tokens, aproximadamente tres veces al día si el token dura ocho horas y el widget permanece abierto.** El intervalo real depende del token y del uso. Como máximo se intenta una vez cada diez minutos. Después se vuelven a leer las credenciales; el widget nunca las escribe ni implementa un refresco OAuth propio. `QUOTA_ORB_NO_REFRESH=1` desactiva esta función.
+
+## Estados y seguridad
+
+- Aro completo = 100 % restante. Verde > 40 %, amarillo 15–40 %, rojo < 15 %.
+- Sin sesión o datos: aro vacío y guion. Error de red: último valor atenuado.
+- Una sola actualización periódica de 60 segundos; caché de Claude de tres minutos y backoff exponencial hasta una hora ante errores. Las peticiones concurrentes se agrupan.
+- Si el reinicio ya pasó, un dato válido indica 100 % restante. El reloj local debe estar bien configurado.
+- Servidor HTTP en `127.0.0.1`, puerto libre (o `QUOTA_ORB_PORT`), sin CORS abierto; rechaza hosts y orígenes ajenos.
+- CSP restrictiva, aislamiento de contexto, renderer sin Node y con sandbox. Navegación y ventanas nuevas bloqueadas.
+- Logos SVG de Simple Icons incrustados localmente. No hay fuentes remotas, telemetría ni servicios de analítica.
+- La consulta de uso y la renovación autorizada mediante Claude CLI son las únicas funciones que necesitan salir a internet. El CLI tiene su propio comportamiento de red.
+- Credenciales solo en memoria, nunca enviadas al renderer ni incluidas en logs. `.local`, cachés, dependencias y ejecutables están excluidos de Git.
+- Para respetar la instalación dentro del proyecto, `app.getPath('userData')` apunta a `.local` junto al ejecutable (o en la raíz al ejecutar desde fuente). Ahí quedan posición y datos de Chromium; no se publican.
+- Los juegos con pantalla completa exclusiva pueden taparlo. Usa pantalla completa en ventana.
+
+## Verificación
+
+Pruebas automatizadas: tiempo de reinicio, umbrales, selección de la ventana semanal, última línea JSONL, valores ausentes o corruptos, reset pasado, ambos formatos Claude y protección HTTP.
+
+Windows: apertura y captura real con Electron 44.7.0. Las comprobaciones adicionales y sus límites están en `docs/VERIFICATION.md`. macOS y Linux requieren validación en sus respectivos sistemas.
+
+Para regenerar una captura sin datos privados, ejecuta Electron con `QUOTA_ORB_DEMO=1`, `QUOTA_ORB_NO_AUTOSTART=1` y `QUOTA_ORB_SCREENSHOT` apuntando a `docs/screenshot.png`. Captura únicamente la ventana y sale. No uses modo demo en el uso diario.
+
+## Publicación
+
+Repositorio local preparado; publicación pendiente de confirmación. Después de revisar lo que se incluirá:
+
+```sh
+git add README.md LICENSE .gitignore package.json package-lock.json src assets docs test tools .github
+git commit -m "Fix desktop widget and verify Windows setup"
+gh repo create quota-orb --public --source=. --remote=origin --push
+```
+
+No subas `.local`, credenciales, registros ni capturas de consumo real. Licencia MIT. Logos: [Simple Icons](https://simpleicons.org), CC0; marcas de sus respectivos propietarios. Proyecto independiente, sin afiliación con OpenAI ni Anthropic.

@@ -34,12 +34,12 @@ function recentSessionFiles(max = MAX_FILES) {
           .sort((a, b) => b.t - a.t);
         for (const f of files) {
           out.push(f.p);
-          if (out.length >= max) return out;
         }
       }
     }
   }
-  return out;
+  // An older conversation can be resumed today; creation date is not recency.
+  return out.sort((a, b) => mtime(b) - mtime(a)).slice(0, max);
 }
 
 function readTail(file, bytes = TAIL_BYTES) {
@@ -51,7 +51,7 @@ function readTail(file, bytes = TAIL_BYTES) {
     const buf = Buffer.alloc(size - start);
     fs.readSync(fd, buf, 0, buf.length, start);
     let text = buf.toString('utf8');
-    if (start > 0) text = text.slice(text.indexOf('\n') + 1); // drop partial first line
+    if (start > 0) text = text.includes('\n') ? text.slice(text.indexOf('\n') + 1) : ''; // drop partial first line
     return text;
   } catch { return ''; } finally { if (fd !== undefined) try { fs.closeSync(fd); } catch {} }
 }

@@ -11,12 +11,23 @@
   "author": "yeremyacuna",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^33.2.0",
-    "electron-builder": "^25.1.8"
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3"
   },
   "build": {
     "appId": "com.yeremyacuna.quotaorb",
     "productName": "Quota Orb",
-    "files": ["src/**/*", "assets/**/*", "package.json"]
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "dir",
+      "signAndEditExecutable": false
+    }
+  },
+  "allowScripts": {
+    "electron": true
   }
 }

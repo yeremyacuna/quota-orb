@@ -20,3 +20,4 @@ body { font: 600 12px/1.2 "Segoe UI", system-ui, -apple-system, "Helvetica Neue"
 .pct { font-size: 14px; font-weight: 700; margin-top: 2px; }
 .time { font-size: 10px; font-weight: 600; opacity: .92; }
 .stale .pct, .stale .time { opacity: .55; }
+.stale .ring { opacity: .55; }

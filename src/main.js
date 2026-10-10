@@ -5,6 +5,15 @@ const os = require('os');
 const path = require('path');
 const { startServer } = require('./server');
 
+// Keep Chromium state and position inside this personal project's directory.
+const localDir = path.join(app.isPackaged ? path.dirname(process.execPath) : app.getAppPath(), '.local');
+fs.mkdirSync(localDir, { recursive: true });
+process.env.QUOTA_ORB_STATE_DIR = localDir;
+app.setPath('userData', localDir);
+app.setPath('sessionData', path.join(localDir, 'chromium'));
+app.setPath('crashDumps', path.join(localDir, 'crashes'));
+app.commandLine.appendSwitch('disable-background-networking');
+
 const WIDTH = 140;
 const MIN_H = 60;
 const MAX_H = 240;
@@ -14,7 +23,8 @@ let win = null;
 let tray = null;
 let trayTip = 'Quota Orb';
 
-if (!app.requestSingleInstanceLock()) app.quit();
+const primaryInstance = app.requestSingleInstanceLock();
+if (!primaryInstance) app.quit();
 app.on('second-instance', () => { if (win) win.show(); });
 
 // ── Window position persistence ──────────────────────────────────────────────
@@ -24,9 +34,9 @@ function loadPosition() {
     if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
     const visible = screen.getAllDisplays().some((d) => {
       const a = d.workArea;
-      return p.x >= a.x - WIDTH + 20 && p.x <= a.x + a.width - 20 && p.y >= a.y && p.y <= a.y + a.height - 20;
+      return p.x >= a.x && p.x + WIDTH <= a.x + a.width && p.y >= a.y && p.y + 100 <= a.y + a.height;
     });
-    return visible ? p : null;
+    return visible ? { x: Math.round(p.x), y: Math.round(p.y) } : null;
   } catch { return null; }
 }
 let saveTimer = null;
@@ -89,6 +99,22 @@ function createWindow(port) {
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.once('ready-to-show', () => win.show());
   win.loadURL(`http://127.0.0.1:${port}/`);
+  if (process.env.QUOTA_ORB_VERIFY === '1') win.webContents.once('did-finish-load', () => {
+    setTimeout(async () => {
+      const visibleBefore = win.isVisible();
+      tray?.emit('click');
+      const hiddenByTray = !win.isVisible();
+      tray?.emit('click');
+      const report = {
+        pid: process.pid, port, visible: win.isVisible(), alwaysOnTop: win.isAlwaysOnTop(),
+        trayCreated: !!tray, trayToggle: visibleBefore && hiddenByTray && win.isVisible(),
+        bounds: win.getBounds(), restoredPosition: pos ? win.getPosition()[0] === pos.x && win.getPosition()[1] === pos.y : null,
+        login: app.getLoginItemSettings().openAtLogin,
+        renderer: await win.webContents.executeJavaScript('({ bridge: typeof window.usageBridge?.setHeight, height: document.getElementById("card").offsetHeight, columns: document.querySelectorAll(".col").length })')
+      };
+      fs.writeFileSync(path.join(localDir, 'verification.json'), JSON.stringify(report, null, 2));
+    }, 3000);
+  });
 }
 
 function createTray() {
@@ -97,7 +123,6 @@ function createTray() {
   tray.setToolTip(trayTip);
   const toggle = () => { if (!win) return; win.isVisible() ? win.hide() : win.show(); };
   const menu = Menu.buildFromTemplate([
-    { label: 'Mostrar / ocultar', click: toggle },
     { label: 'Cerrar', click: () => app.quit() },
   ]);
   tray.on('click', toggle);
@@ -112,7 +137,7 @@ function updateTooltip(data) {
 }
 
 ipcMain.on('widget:height', (e, h) => {
-  if (!win || win.isDestroyed() || !Number.isFinite(h)) return;
+  if (!win || win.isDestroyed() || e.sender !== win.webContents || !Number.isFinite(h)) return;
   win.setContentSize(WIDTH, Math.round(Math.min(MAX_H, Math.max(MIN_H, h))));
 });
 
@@ -127,14 +152,23 @@ async function captureAndQuit(file) {
 if (process.platform === 'linux') app.disableHardwareAcceleration();
 app.setAppUserModelId('com.yeremyacuna.quotaorb');
 
-app.whenReady().then(async () => {
+if (primaryInstance) app.whenReady().then(async () => {
   if (process.platform === 'darwin') app.dock?.hide();
-  const { port } = await startServer({ onUpdate: updateTooltip });
+  const { port, server } = await startServer({ port: Number(process.env.QUOTA_ORB_PORT) || 0, onUpdate: updateTooltip });
+  app.on('before-quit', () => {
+    clearTimeout(saveTimer);
+    if (win && !win.isDestroyed()) {
+      const [x, y] = win.getPosition();
+      try { fs.writeFileSync(POS_FILE(), JSON.stringify({ x, y })); } catch {}
+    }
+    server.close();
+    tray?.destroy();
+  });
   createWindow(port);
   try { createTray(); } catch (e) { console.error('Tray unavailable:', e.message); }
   enableAutostart();
   if (process.env.QUOTA_ORB_SCREENSHOT) captureAndQuit(process.env.QUOTA_ORB_SCREENSHOT);
-});
+}).catch(() => { console.error('No se pudo iniciar QuotaOrb. Revisa si el puerto está ocupado.'); app.quit(); });
 
 // Keep running in the tray when the window is hidden.
 app.on('window-all-closed', () => {});
