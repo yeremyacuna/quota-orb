@@ -1,0 +1,22 @@
+{
+  "name": "quota-orb",
+  "version": "1.0.0",
+  "description": "Floating desktop widget showing your remaining weekly usage for Codex and Claude.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test \"test/*.test.js\"",
+    "dist": "electron-builder"
+  },
+  "author": "yeremyacuna",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.yeremyacuna.quotaorb",
+    "productName": "Quota Orb",
+    "files": ["src/**/*", "assets/**/*", "package.json"]
+  }
+}

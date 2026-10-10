@@ -1,0 +1,21 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+      - name: Secret scan
+        run: |
+          if grep -rEn "sk-ant-[A-Za-z0-9_-]{10,}|\"accessToken\"\s*:\s*\"[A-Za-z0-9._-]{20,}\"" --exclude-dir=node_modules --exclude-dir=.git .; then
+            echo "Possible secret found"; exit 1
+          fi

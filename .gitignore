@@ -1,0 +1,12 @@
+node_modules/
+dist/
+out/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+# never commit credentials or captures that may contain private data
+.credentials.json
+*.local.png
