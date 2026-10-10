@@ -1,6 +1,6 @@
 # Verificación local
 
-Fecha: 9 de octubre de 2026 (America/Lima).
+Fecha: 10 de octubre de 2026 (America/Lima).
 
 ## Comprobado en Windows
 
@@ -21,4 +21,4 @@ Fecha: 9 de octubre de 2026 (America/Lima).
 - Arrastre manual, cambios de monitores, juegos y reinicio completo del sistema.
 - Fallos reales de Anthropic 401/429/5xx, desfase del reloj y renovación al vencer ocho horas. El código incluye protecciones, pero no se provocaron estos casos en una cuenta real.
 
-El ejecutable no está firmado. No se publicó ningún repositorio ni se configuró un remoto.
+El ejecutable no está firmado. El repositorio público usa el remoto SSH `git@github.com:yeremyacuna/quota-orb.git`; la versión `v1.0.0` y su instalador fueron publicados mediante GitHub Actions.

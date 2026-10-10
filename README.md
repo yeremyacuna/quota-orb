@@ -1,80 +1,232 @@
-# quota-orb
+<div align="center">
 
-Widget de escritorio que muestra el **porcentaje semanal restante** de Codex y Claude. Dos aros, sin botones, sobre las demás ventanas. Electron y Node.js; sin dependencias adicionales de ejecución.
+<img src="assets/app.png" alt="Icono de Quota Orb" width="128" />
 
-![Widget con datos ficticios](docs/screenshot.png)
+# Quota Orb
 
-La captura contiene datos ficticios (63 % y 28 %), no datos de una cuenta.
+### Tu uso semanal de Codex y Claude, siempre visible
 
-## Instalar en Windows 11
+Un widget flotante, discreto y privado para Windows 11.
 
-Descarga `QuotaOrb-Setup-1.0.0-x64.exe` desde [Releases](https://github.com/yeremyacuna/quota-orb/releases/latest) y ejecútalo. Instala Quota Orb para tu usuario, crea accesos directos y registra el inicio automático. Está construido para Windows 11 x64. Al no tener todavía un certificado comercial, Windows puede mostrar SmartScreen; comprueba que la descarga venga de este repositorio.
+[![Validation](https://img.shields.io/github/actions/workflow/status/yeremyacuna/quota-orb/validate.yml?branch=main&style=for-the-badge&label=validation&logo=githubactions&logoColor=white)](https://github.com/yeremyacuna/quota-orb/actions/workflows/validate.yml)
+[![Release](https://img.shields.io/github/v/release/yeremyacuna/quota-orb?style=for-the-badge&logo=github&logoColor=white)](https://github.com/yeremyacuna/quota-orb/releases/latest)
+[![License](https://img.shields.io/github/license/yeremyacuna/quota-orb?style=for-the-badge)](LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/yeremyacuna/quota-orb?style=for-the-badge)](https://github.com/yeremyacuna/quota-orb/commits/main)
 
-Desde el código fuente, con Node.js y npm:
+[![Descargar para Windows](https://img.shields.io/badge/Descargar-Windows_11_x64-0078D4?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/yeremyacuna/quota-orb/releases/latest)
 
-```sh
-npm ci
-# Si falta el binario de Electron:
-node node_modules/electron/install.js
-npm test
-npm start
-npm run dist
-```
+</div>
 
-`dist` genera el instalador NSIS de Windows. No instala un servicio ni requiere un servidor externo. Para salir: clic derecho en la bandeja → **Cerrar**. Clic izquierdo muestra u oculta. Arrastra desde cualquier punto del widget. La ventana mide aproximadamente 140 × 100 píxeles, con fondo negro al 30 %, borde de 1 píxel y texto con sombra.
+---
 
-Para desactivar el inicio automático usa Aplicaciones de inicio de Windows. `QUOTA_ORB_NO_AUTOSTART=1` evita volver a registrarlo al abrir desde código. Cerrar el widget no desactiva el inicio automático.
+## Contenido
 
-## Conectar las cuentas
+- [Qué es](#qué-es)
+- [Vista previa](#vista-previa)
+- [Instalación](#instalación)
+- [Primer uso](#primer-uso)
+- [Cómo funciona](#cómo-funciona)
+- [GitHub Actions](#github-actions)
+- [Qué es la carpeta `dist`](#qué-es-la-carpeta-dist)
+- [Desarrollo](#desarrollo)
+- [Privacidad y seguridad](#privacidad-y-seguridad)
+- [Limitaciones](#limitaciones)
+- [Licencia](#licencia)
 
-**Codex:** usa Codex normalmente. El widget lee únicamente los últimos 512 KiB de hasta 24 archivos de sesión recientes en `$CODEX_HOME/sessions` o `~/.codex/sessions`. Compara la marca de tiempo interna de los eventos para que varias conversaciones activas no dejen visible un valor antiguo. Busca la ventana de `10080` minutos, independientemente de que sea `primary` o `secondary`. No consulta OpenAI por red. Si no hay ventana semanal disponible, muestra “sin datos”.
+---
 
-**Claude:** instala el CLI oficial y ejecuta una vez:
+## Qué es
 
-```sh
+Quota Orb muestra cuánto uso **semanal restante** tienes en Codex y Claude mediante dos aros de progreso. Vive sobre las demás ventanas, recuerda su posición, se actualiza cada minuto y se puede mostrar u ocultar desde la bandeja del sistema.
+
+- **Verde:** más de 40 % restante.
+- **Amarillo:** entre 15 % y 40 % restante.
+- **Rojo:** menos de 15 % restante.
+- **Aro completo:** 100 % disponible.
+- **Aro vacío:** límite agotado o sesión no disponible.
+
+No aparece en la barra de tareas y se inicia al entrar en Windows. Un clic izquierdo en el icono de la bandeja muestra u oculta el widget; el clic derecho permite cerrarlo.
+
+---
+
+## Vista previa
+
+<div align="center">
+
+<img src="docs/screenshot.png" alt="Vista previa de Quota Orb" width="280" />
+
+<sub>La captura usa valores ficticios y no contiene datos de ninguna cuenta.</sub>
+
+</div>
+
+---
+
+## Instalación
+
+### Para cualquier usuario
+
+1. Abre la página de [Releases](https://github.com/yeremyacuna/quota-orb/releases/latest).
+2. Descarga **`QuotaOrb-Setup-1.0.0-x64.exe`**.
+3. Ejecuta el archivo y espera a que finalice la instalación.
+4. Abre **Quota Orb** desde el menú Inicio o el acceso directo del escritorio.
+
+Eso es todo. El usuario final **no necesita Git, Node.js, npm ni clonar el repositorio**. El `.exe` de Releases contiene la aplicación y su instalador.
+
+> [!NOTE]
+> Los archivos automáticos `Source code (zip)` y `Source code (tar.gz)` que muestra GitHub son para desarrolladores. No instalan la aplicación.
+
+> [!WARNING]
+> La versión actual no tiene firma digital. Windows SmartScreen puede mostrar una advertencia de editor desconocido. El código y el proceso de compilación están disponibles en este repositorio para su revisión.
+
+El instalador es de un solo paso, se instala para el usuario actual y crea accesos directos en el escritorio y el menú Inicio. Está preparado para **Windows 11 x64**.
+
+---
+
+## Primer uso
+
+### Codex
+
+Quota Orb lee localmente los eventos de uso que Codex guarda en `~/.codex/sessions`. No requiere copiar tokens ni configurar una clave. Si utilizas `CODEX_HOME`, la aplicación respeta esa ubicación.
+
+### Claude
+
+La aplicación de escritorio de Claude por sí sola no crea la sesión que necesita el widget. Instala el CLI oficial de Claude y ejecuta una vez:
+
+```powershell
 claude auth login
 ```
 
-Completa tú el acceso en el navegador; no pegues tokens en el proyecto. Tener solamente la aplicación de escritorio no basta. El widget lee exclusivamente `~/.claude/.credentials.json`, campo `claudeAiOauth`; en macOS usa el Llavero, servicio `Claude Code-credentials`. No busca credenciales en otros lugares.
+Quota Orb solo busca la credencial en la ubicación oficial del CLI. No explora navegadores ni otros archivos.
 
-El endpoint `https://api.anthropic.com/api/oauth/usage` **no está documentado y puede cambiar**. Todo su parseo está en `src/claude.js`. Admite `seven_day.utilization` como porcentaje usado y el formato alternativo `limits[kind=weekly_all].percent`, asumido usado. Esta última interpretación aún necesita contrastarse con una cuenta real; `QUOTA_ORB_CLAUDE_PERCENT=remaining` invierte solo ese formato antiguo. No interpreta falta de datos como saldo ilimitado.
+El token de Claude dura aproximadamente ocho horas. Cuando está por vencer, Quota Orb delega su renovación al CLI oficial ejecutando una petición mínima con Haiku. Esta renovación puede gastar unos pocos tokens, aproximadamente tres veces al día. Para desactivarla, inicia la aplicación con `QUOTA_ORB_NO_REFRESH=1`.
 
-No puede garantizarse compatibilidad con todos los planes gratuitos o de pago: depende de que cada cuenta entregue una ventana semanal y permita acceder a esa fuente. Si no la entrega se muestra un guion.
+---
 
-### Renovación de Claude y consumo
+## Cómo funciona
 
-Cuando `expiresAt` indica que faltan menos de 15 minutos, se llama al CLI oficial con:
-
-```sh
-claude -p "ok" --model haiku --strict-mcp-config --mcp-config '{"mcpServers":{}}'
+```text
+Sesiones locales de Codex ──┐
+                            ├── Servidor local 127.0.0.1 ── Widget Electron
+API de uso de Anthropic ────┘           │
+                                        ├── Bandeja del sistema
+                                        ├── Posición persistente
+                                        └── Inicio automático
 ```
 
-En Windows se pasa el mismo JSON mediante un archivo local para evitar problemas de comillas del CLI. **Esto consume unos pocos tokens, aproximadamente tres veces al día si el token dura ocho horas y el widget permanece abierto.** El intervalo real depende del token y del uso. Como máximo se intenta una vez cada diez minutos. Después se vuelven a leer las credenciales; el widget nunca las escribe ni implementa un refresco OAuth propio. `QUOTA_ORB_NO_REFRESH=1` desactiva esta función.
+| Fuente | Obtención | Frecuencia |
+|---|---|---:|
+| Codex | Lee solamente la cola de los archivos de sesión recientes y selecciona la ventana de 10 080 minutos | Cada minuto |
+| Claude | Consulta el endpoint OAuth de uso con la sesión del CLI oficial | Cada minuto, con caché de 3 minutos |
 
-## Estados y seguridad
+El servidor usa únicamente el módulo `http` de Node.js, escucha en `127.0.0.1` y no habilita CORS público. El renderer está aislado mediante `contextIsolation`, sin integración directa con Node.js y con una política CSP restrictiva.
 
-- Aro completo = 100 % restante. Verde > 40 %, amarillo 15–40 %, rojo < 15 %.
-- Sin sesión o datos: aro vacío y guion. Error de red: último valor atenuado.
-- Una sola actualización periódica de 60 segundos; caché de Claude de tres minutos y backoff exponencial hasta una hora ante errores. Las peticiones concurrentes se agrupan.
-- Si el reinicio ya pasó, un dato válido indica 100 % restante. El reloj local debe estar bien configurado.
-- Servidor HTTP en `127.0.0.1`, puerto libre (o `QUOTA_ORB_PORT`), sin CORS abierto; rechaza hosts y orígenes ajenos.
-- CSP restrictiva, aislamiento de contexto, renderer sin Node y con sandbox. Navegación y ventanas nuevas bloqueadas.
-- Logos SVG de Simple Icons incrustados localmente. No hay fuentes remotas, telemetría ni servicios de analítica.
-- La consulta de uso y la renovación autorizada mediante Claude CLI son las únicas funciones que necesitan salir a internet. El CLI tiene su propio comportamiento de red.
-- Credenciales solo en memoria, nunca enviadas al renderer ni incluidas en logs. `.local`, cachés, dependencias y ejecutables están excluidos de Git.
-- Para respetar la instalación dentro del proyecto, `app.getPath('userData')` apunta a `.local` junto al ejecutable (o en la raíz al ejecutar desde fuente). Ahí quedan posición y datos de Chromium; no se publican.
-- Los juegos con pantalla completa exclusiva pueden taparlo. Usa pantalla completa en ventana.
+La arquitectura completa está documentada en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-## Verificación
+> [!IMPORTANT]
+> El endpoint de uso de Anthropic no está documentado públicamente y puede cambiar. Su lectura y validación están encapsuladas en `src/claude.js` para facilitar futuras correcciones.
 
-Pruebas automatizadas: tiempo de reinicio, umbrales, selección de la ventana semanal, última línea JSONL, valores ausentes o corruptos, reset pasado, ambos formatos Claude y protección HTTP.
+---
 
-Windows: apertura y captura real con Electron 44.7.0. Las comprobaciones adicionales y sus límites están en `docs/VERIFICATION.md`. macOS y Linux requieren validación en sus respectivos sistemas.
+## GitHub Actions
 
-Para regenerar una captura sin datos privados, ejecuta Electron con `QUOTA_ORB_DEMO=1`, `QUOTA_ORB_NO_AUTOSTART=1` y `QUOTA_ORB_SCREENSHOT` apuntando a `docs/screenshot.png`. Captura únicamente la ventana y sale. No uses modo demo en el uso diario.
+El repositorio tiene dos automatizaciones visibles en la pestaña **Actions**:
 
-## Publicación
+| Workflow | Cuándo se ejecuta | Qué hace |
+|---|---|---|
+| [`validate.yml`](.github/workflows/validate.yml) | En cada push a `main` y en cada pull request | Ejecuta las pruebas y busca patrones que pudieran indicar una credencial publicada por accidente. No crea releases. |
+| [`release.yml`](.github/workflows/release.yml) | Al publicar una etiqueta que empiece por `v`, por ejemplo `v1.0.0` | Compila en un Windows limpio, vuelve a ejecutar las pruebas, genera el instalador NSIS y lo adjunta a GitHub Releases. |
 
-El flujo `release.yml` compila un instalador nuevo cuando se publica una etiqueta `v*`. `.local`, credenciales, registros, dependencias y capturas de consumo real están excluidos de Git.
+La versión `v1.0.0` ya fue construida por GitHub Actions y su instalador público está en [Releases](https://github.com/yeremyacuna/quota-orb/releases/tag/v1.0.0).
 
-Licencia MIT. Logos: [Simple Icons](https://simpleicons.org), CC0; marcas de sus respectivos propietarios. Proyecto independiente, sin afiliación con OpenAI ni Anthropic.
+---
+
+## Qué es la carpeta `dist`
+
+`dist` significa *distribution*. Es la carpeta de salida que crea `npm run dist` en la computadora donde se compila el proyecto.
+
+- `dist/QuotaOrb-Setup-1.0.0-x64.exe` es una compilación local del instalador.
+- La carpeta está ignorada por Git porque contiene archivos grandes y regenerables.
+- Puede borrarse sin perder el código; `npm run dist` vuelve a crearla.
+- GitHub Actions genera su propia carpeta `dist` en una máquina limpia y sube únicamente el `.exe` resultante a Releases.
+
+Por eso el instalador dentro de `dist` y el instalador de Releases cumplen la misma función, pero **el enlace recomendado para los usuarios es Releases**.
+
+---
+
+## Desarrollo
+
+Requisitos: Node.js 22 o posterior, npm y Windows 11 x64 para producir el instalador actual.
+
+```powershell
+git clone git@github.com:yeremyacuna/quota-orb.git
+cd quota-orb
+npm ci
+npm test
+npm start
+```
+
+Para crear un instalador local:
+
+```powershell
+npm run dist
+```
+
+### Estructura
+
+```text
+quota-orb/
+├── .github/workflows/   # Validación y publicación de releases
+├── assets/              # Iconos locales de la aplicación y la bandeja
+├── docs/                # Captura, arquitectura, verificación y roadmap
+├── src/
+│   ├── main.js          # Ventana, bandeja, IPC y autoinicio
+│   ├── server.js        # Servidor HTTP local
+│   ├── codex.js         # Lectura de sesiones de Codex
+│   ├── claude.js        # Uso de Claude y renovación mediante su CLI
+│   ├── preload.js       # Puente IPC aislado
+│   └── ui/              # HTML, CSS y JavaScript del widget
+├── test/                # Pruebas unitarias
+├── package.json
+└── LICENSE
+```
+
+Los resultados comprobados y los casos pendientes están en [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
+
+---
+
+## Privacidad y seguridad
+
+- Las credenciales nunca llegan a la interfaz ni se escriben en los logs.
+- Codex se consulta desde archivos locales; no necesita una petición de red adicional.
+- La única petición externa de uso es la consulta de Claude a `api.anthropic.com`.
+- La aplicación no escribe en los archivos de credenciales.
+- La captura pública usa datos ficticios.
+- GitHub Actions revisa patrones de secretos antes de aceptar cambios en `main`.
+
+---
+
+## Limitaciones
+
+- El instalador publicado actualmente es para Windows x64 y no está firmado digitalmente.
+- La consulta de Claude depende de un endpoint no documentado que Anthropic puede modificar.
+- Claude requiere una sesión iniciada mediante su CLI oficial.
+- En juegos con pantalla completa exclusiva, Windows puede colocar el juego por encima del widget. El modo de pantalla completa en ventana sí permite verlo.
+- El código contempla macOS y Linux, pero la versión `v1.0.0` se verificó y publicó para Windows 11.
+
+Consulta el [roadmap](docs/ROADMAP.md) para conocer las mejoras previstas.
+
+---
+
+## Licencia
+
+Distribuido bajo la licencia [MIT](LICENSE).
+
+Los logotipos proceden de [Simple Icons](https://simpleicons.org) (CC0); las marcas pertenecen a sus respectivos propietarios. Quota Orb es un proyecto independiente y no está afiliado con OpenAI ni Anthropic.
+
+<div align="center">
+
+Hecho por [Yeremy Acuña](https://github.com/yeremyacuna)
+
+**[Descargar Quota Orb](https://github.com/yeremyacuna/quota-orb/releases/latest)**
+
+</div>
