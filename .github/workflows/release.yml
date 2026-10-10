@@ -12,17 +12,20 @@ jobs:
   windows-installer:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run security:check
+      - run: npm audit --audit-level=high
       # A tag makes electron-builder try its own publisher unless explicitly disabled.
       # action-gh-release below publishes with the scoped GITHUB_TOKEN instead.
       - run: npm run dist -- --publish never
-      - uses: softprops/action-gh-release@v2
+      # Pin the third-party publisher to the audited v2 commit.
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
         with:
           files: dist/QuotaOrb-Setup-*.exe
           generate_release_notes: true

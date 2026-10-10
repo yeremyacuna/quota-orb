@@ -58,13 +58,13 @@ async function query() {
   let oauth = await readOAuth();
   if (typeof oauth?.accessToken !== 'string' || !oauth.accessToken) {
     cache = null;
-    return hint({ status: 'noauth', hint: 'Ejecuta claude auth login en el CLI.' });
+    return hint({ status: 'noauth', hint: 'Run claude auth login in the CLI.' });
   }
   const expiry = toEpochSeconds(oauth.expiresAt);
   if (expiry && expiry * 1000 - Date.now() < 900000) {
     await refreshViaCli();
     oauth = await readOAuth();
-    if (!oauth?.accessToken) return hint({ status: 'noauth', hint: 'Ejecuta claude auth login en el CLI.' });
+    if (!oauth?.accessToken) return hint({ status: 'noauth', hint: 'Run claude auth login in the CLI.' });
   }
   try {
     const res = await fetch('https://api.anthropic.com/api/oauth/usage', {
@@ -74,7 +74,7 @@ async function query() {
     if (res.status === 401 || res.status === 403) {
       nextAt = Date.now() + COOLDOWN;
       cache = null;
-      return hint({ status: 'noauth', hint: 'Sesión vencida: ejecuta claude auth login.' });
+      return hint({ status: 'noauth', hint: 'Session expired: run claude auth login.' });
     }
     if (!res.ok) {
       const seconds = Number(res.headers.get('retry-after'));
@@ -89,7 +89,7 @@ async function query() {
   } catch {
     failures++;
     nextAt = Math.max(nextAt, Date.now() + Math.min(CACHE_MS * 2 ** Math.min(failures - 1, 4), 3600000));
-    return hint(cache?.status === 'ok' ? { ...cache, stale: true, hint: 'Sin conexión; último dato disponible.' } : { status: 'error', hint: 'No se pudo consultar Anthropic; se reintentará automáticamente.' });
+    return hint(cache?.status === 'ok' ? { ...cache, stale: true, hint: 'Offline; showing the last available value.' } : { status: 'error', hint: 'Anthropic usage is unavailable; Quota Orb will retry automatically.' });
   }
 }
 let lastResult;

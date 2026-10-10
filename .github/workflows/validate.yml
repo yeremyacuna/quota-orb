@@ -5,17 +5,23 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: npm
+      - run: npm ci
       - run: npm test
-      - name: Secret scan
-        run: |
-          if grep -rEn "sk-ant-[A-Za-z0-9_-]{10,}|\"accessToken\"\s*:\s*\"[A-Za-z0-9._-]{20,}\"" --exclude-dir=node_modules --exclude-dir=.git .; then
-            echo "Possible secret found"; exit 1
-          fi
+      - run: npm run security:check
+      - run: npm audit --audit-level=high

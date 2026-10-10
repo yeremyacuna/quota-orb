@@ -20,11 +20,16 @@ test('HTTP server rejects foreign hosts, origins and mutations', async () => {
       require('node:http').get(base, { headers: { Host: 'evil.example' } }, res => { res.resume(); resolve(res.statusCode); }).on('error', reject);
     });
     assert.equal(foreignHostStatus, 403);
-    assert.equal((await fetch(base + '/api/uso', { headers: { Origin: 'https://evil.example' } })).status, 403);
+    assert.equal((await fetch(base + '/api/usage', { headers: { Origin: 'https://evil.example' } })).status, 403);
     assert.equal((await fetch(base, { method: 'POST' })).status, 405);
     const res = await fetch(base);
     assert.equal(res.status, 200);
     assert.match(res.headers.get('content-security-policy'), /default-src 'none'/);
+    assert.match(res.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+    assert.equal(res.headers.get('cross-origin-resource-policy'), 'same-origin');
+    assert.equal(res.headers.get('referrer-policy'), 'no-referrer');
+    assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(res.headers.get('x-frame-options'), 'DENY');
     assert.equal(res.headers.get('access-control-allow-origin'), null);
   } finally { await new Promise(resolve => server.close(resolve)); }
 });

@@ -36,7 +36,7 @@
     } else {
       arc.setAttribute('stroke-dashoffset', String(C)); // empty ring
       pct.textContent = '—';
-      time.textContent = u && u.status === 'noauth' ? 'sin sesión' : 'sin datos';
+      time.textContent = u && u.status === 'noauth' ? 'sign in' : 'no data';
     }
   }
 
@@ -55,7 +55,7 @@
     if (pending) return;
     pending = true;
     try {
-      const res = await fetch('/api/uso', { cache: 'no-store' });
+      const res = await fetch('/api/usage', { cache: 'no-store' });
       if (!res.ok) throw new Error('Unavailable');
       last = await res.json();
       document.getElementById('card').classList.remove('stale');

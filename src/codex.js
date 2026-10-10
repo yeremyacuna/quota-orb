@@ -94,7 +94,7 @@ function weeklyFrom(rl, nowMs = Date.now()) {
 
 function getCodexUsage(nowMs = Date.now()) {
   const files = recentSessionFiles();
-  if (!files.length) return { status: 'nodata', hint: 'Sin sesiones de Codex todavía.' };
+  if (!files.length) return { status: 'nodata', hint: 'No Codex sessions found yet.' };
   let newest = null;
   for (const file of files) {
     const event = lastRateLimitEvent(readTail(file));
@@ -103,7 +103,7 @@ function getCodexUsage(nowMs = Date.now()) {
     if (!newest || observedAt > newest.observedAt) newest = { ...event, observedAt };
   }
   if (newest) return weeklyFrom(newest.rateLimits, nowMs);
-  return { status: 'nodata', hint: 'Aún no hay datos de límites en las sesiones recientes.' };
+  return { status: 'nodata', hint: 'No rate-limit data was found in recent sessions.' };
 }
 
 module.exports = { getCodexUsage, lastRateLimits, lastRateLimitEvent, weeklyFrom, WEEK_MINUTES };

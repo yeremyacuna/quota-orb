@@ -5,14 +5,14 @@ const os = require('os');
 const path = require('path');
 const { startServer } = require('./server');
 
-// Keep Chromium state and position inside this personal project's directory.
-const localDir = path.join(app.isPackaged ? path.dirname(process.execPath) : app.getAppPath(), '.local');
-fs.mkdirSync(localDir, { recursive: true });
-process.env.QUOTA_ORB_STATE_DIR = localDir;
-app.setPath('userData', localDir);
-app.setPath('sessionData', path.join(localDir, 'chromium'));
-app.setPath('crashDumps', path.join(localDir, 'crashes'));
+// User state belongs in the OS-managed profile, never beside installed binaries.
+const stateDir = app.getPath('userData');
+fs.mkdirSync(stateDir, { recursive: true });
+process.env.QUOTA_ORB_STATE_DIR = stateDir;
+app.setPath('sessionData', path.join(stateDir, 'chromium'));
+app.setPath('crashDumps', path.join(stateDir, 'crashes'));
 app.commandLine.appendSwitch('disable-background-networking');
+app.enableSandbox();
 
 const WIDTH = 140;
 const MIN_H = 60;
@@ -90,6 +90,11 @@ function createWindow(port) {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      webviewTag: false,
+      spellcheck: false,
+      devTools: !app.isPackaged,
     },
   });
   win.setAlwaysOnTop(true, 'screen-saver');
@@ -97,6 +102,8 @@ function createWindow(port) {
   win.on('moved', savePositionSoon);
   win.webContents.on('will-navigate', (e) => e.preventDefault());
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.session.setPermissionCheckHandler(() => false);
+  win.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
   win.once('ready-to-show', () => win.show());
   win.loadURL(`http://127.0.0.1:${port}/`);
   if (process.env.QUOTA_ORB_VERIFY === '1') win.webContents.once('did-finish-load', () => {
@@ -112,7 +119,7 @@ function createWindow(port) {
         login: app.getLoginItemSettings().openAtLogin,
         renderer: await win.webContents.executeJavaScript('({ bridge: typeof window.usageBridge?.setHeight, height: document.getElementById("card").offsetHeight, columns: document.querySelectorAll(".col").length })')
       };
-      fs.writeFileSync(path.join(localDir, 'verification.json'), JSON.stringify(report, null, 2));
+      fs.writeFileSync(path.join(stateDir, 'verification.json'), JSON.stringify(report, null, 2));
     }, 3000);
   });
 }
@@ -123,7 +130,7 @@ function createTray() {
   tray.setToolTip(trayTip);
   const toggle = () => { if (!win) return; win.isVisible() ? win.hide() : win.show(); };
   const menu = Menu.buildFromTemplate([
-    { label: 'Cerrar', click: () => app.quit() },
+    { label: 'Quit', click: () => app.quit() },
   ]);
   tray.on('click', toggle);
   if (process.platform === 'linux') tray.setContextMenu(menu); // Linux ignores right-click events
@@ -168,7 +175,7 @@ if (primaryInstance) app.whenReady().then(async () => {
   try { createTray(); } catch (e) { console.error('Tray unavailable:', e.message); }
   enableAutostart();
   if (process.env.QUOTA_ORB_SCREENSHOT) captureAndQuit(process.env.QUOTA_ORB_SCREENSHOT);
-}).catch(() => { console.error('No se pudo iniciar QuotaOrb. Revisa si el puerto está ocupado.'); app.quit(); });
+}).catch(() => { console.error('Quota Orb could not start. Check whether the configured port is already in use.'); app.quit(); });
 
 // Keep running in the tray when the window is hidden.
 app.on('window-all-closed', () => {});

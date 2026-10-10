@@ -1,22 +1,24 @@
 {
   "name": "quota-orb",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Floating desktop widget showing your remaining weekly usage for Codex and Claude.",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
     "test": "node --test \"test/*.test.js\"",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "security:check": "node tools/check-secrets.js"
   },
   "author": "yeremyacuna",
   "license": "MIT",
   "devDependencies": {
     "electron": "^44.7.0",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "26.15.3"
   },
   "build": {
     "appId": "com.yeremyacuna.quotaorb",
     "productName": "Quota Orb",
+    "asar": true,
     "files": [
       "src/**/*",
       "assets/**/*",
@@ -26,12 +28,13 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/app.png",
-      "artifactName": "QuotaOrb-Setup-${version}-${arch}.${ext}",
-      "signAndEditExecutable": false
+      "artifactName": "QuotaOrb-Setup-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": true,
@@ -44,5 +47,10 @@
   },
   "allowScripts": {
     "electron": true
+  },
+  "overrides": {
+    "app-builder-lib": {
+      "@electron/get": "5.1.0"
+    }
   }
 }

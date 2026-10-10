@@ -1,5 +1,5 @@
 'use strict';
-// Dependency-free HTTP server bound to 127.0.0.1: serves the UI and /api/uso.
+// Dependency-free HTTP server bound to 127.0.0.1: serves the UI and /api/usage.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -12,7 +12,7 @@ const FILES = {
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
   '/style.css': ['style.css', 'text/css; charset=utf-8'],
 };
-const CSP = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'";
+const CSP = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; media-src 'none'; manifest-src 'none'";
 
 async function getAll() {
   if (process.env.QUOTA_ORB_DEMO === '1') return { codex: { status: 'ok', remaining: 63, resetsAt: Date.now() / 1000 + 5 * 86400 + 9 * 3600 + 5 }, claude: { status: 'ok', remaining: 28, resetsAt: Date.now() / 1000 + 3 * 86400 + 3600 + 5 } };
@@ -28,11 +28,20 @@ function startServer({ port = 0, onUpdate } = {}) {
     if (host !== '127.0.0.1' && host !== 'localhost') { res.writeHead(403); return res.end(); }
     if ((req.headers.origin && req.headers.origin !== `http://${req.headers.host}`) || req.headers['sec-fetch-site'] === 'cross-site') { res.writeHead(403); return res.end(); }
     const url = (req.url || '/').split('?')[0];
-    const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': CSP };
+    const headers = {
+      'Cache-Control': 'no-store',
+      'Content-Security-Policy': CSP,
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Resource-Policy': 'same-origin',
+      'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+      'Referrer-Policy': 'no-referrer',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+    };
 
     if (req.method !== 'GET') { res.writeHead(405, headers); return res.end(); }
 
-    if (url === '/api/uso') {
+    if (url === '/api/usage') {
       try {
         const data = await getAll();
         if (onUpdate) try { onUpdate(data); } catch {}
