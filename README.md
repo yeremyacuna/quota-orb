@@ -6,9 +6,9 @@ Widget de escritorio que muestra el **porcentaje semanal restante** de Codex y C
 
 La captura contiene datos ficticios (63 % y 28 %), no datos de una cuenta.
 
-## Usar en Windows
+## Instalar en Windows 11
 
-Abre `dist/win-unpacked/Quota Orb.exe` después de compilar. Mantén toda la carpeta `win-unpacked` junta. Al abrir registra el inicio automático para ese ejecutable; si lo mueves, ábrelo otra vez para actualizar el registro. Es una aplicación local sin firma digital.
+Descarga `QuotaOrb-Setup-1.0.0-x64.exe` desde [Releases](https://github.com/yeremyacuna/quota-orb/releases/latest) y ejecútalo. Instala Quota Orb para tu usuario, crea accesos directos y registra el inicio automático. Está construido para Windows 11 x64. Al no tener todavía un certificado comercial, Windows puede mostrar SmartScreen; comprueba que la descarga venga de este repositorio.
 
 Desde el código fuente, con Node.js y npm:
 
@@ -21,13 +21,13 @@ npm start
 npm run dist
 ```
 
-`dist` genera una carpeta ejecutable en Windows. No instala un servicio ni requiere un servidor externo. Para salir: clic derecho en la bandeja → **Cerrar**. Clic izquierdo muestra u oculta. Arrastra desde cualquier punto del widget. La ventana mide aproximadamente 140 × 100 píxeles, con fondo negro al 30 %, borde de 1 píxel y texto con sombra.
+`dist` genera el instalador NSIS de Windows. No instala un servicio ni requiere un servidor externo. Para salir: clic derecho en la bandeja → **Cerrar**. Clic izquierdo muestra u oculta. Arrastra desde cualquier punto del widget. La ventana mide aproximadamente 140 × 100 píxeles, con fondo negro al 30 %, borde de 1 píxel y texto con sombra.
 
 Para desactivar el inicio automático usa Aplicaciones de inicio de Windows. `QUOTA_ORB_NO_AUTOSTART=1` evita volver a registrarlo al abrir desde código. Cerrar el widget no desactiva el inicio automático.
 
 ## Conectar las cuentas
 
-**Codex:** usa Codex normalmente. El widget lee únicamente los últimos 512 KiB de hasta seis archivos de sesión recientes en `$CODEX_HOME/sessions` o `~/.codex/sessions`. Ordena por modificación para incluir conversaciones antiguas retomadas. Busca la ventana de `10080` minutos, independientemente de que sea `primary` o `secondary`. No consulta OpenAI por red. Si no hay ventana semanal disponible, muestra “sin datos”.
+**Codex:** usa Codex normalmente. El widget lee únicamente los últimos 512 KiB de hasta 24 archivos de sesión recientes en `$CODEX_HOME/sessions` o `~/.codex/sessions`. Compara la marca de tiempo interna de los eventos para que varias conversaciones activas no dejen visible un valor antiguo. Busca la ventana de `10080` minutos, independientemente de que sea `primary` o `secondary`. No consulta OpenAI por red. Si no hay ventana semanal disponible, muestra “sin datos”.
 
 **Claude:** instala el CLI oficial y ejecuta una vez:
 
@@ -75,12 +75,6 @@ Para regenerar una captura sin datos privados, ejecuta Electron con `QUOTA_ORB_D
 
 ## Publicación
 
-Repositorio local preparado; publicación pendiente de confirmación. Después de revisar lo que se incluirá:
+El flujo `release.yml` compila un instalador nuevo cuando se publica una etiqueta `v*`. `.local`, credenciales, registros, dependencias y capturas de consumo real están excluidos de Git.
 
-```sh
-git add README.md LICENSE .gitignore package.json package-lock.json src assets docs test tools .github
-git commit -m "Fix desktop widget and verify Windows setup"
-gh repo create quota-orb --public --source=. --remote=origin --push
-```
-
-No subas `.local`, credenciales, registros ni capturas de consumo real. Licencia MIT. Logos: [Simple Icons](https://simpleicons.org), CC0; marcas de sus respectivos propietarios. Proyecto independiente, sin afiliación con OpenAI ni Anthropic.
+Licencia MIT. Logos: [Simple Icons](https://simpleicons.org), CC0; marcas de sus respectivos propietarios. Proyecto independiente, sin afiliación con OpenAI ni Anthropic.

@@ -1,26 +1,48 @@
 'use strict';
-// Generates assets/tray.png (32x32 anti-aliased ring) without any dependency.
-const zlib = require('zlib');
-const fs = require('fs');
-const path = require('path');
-const S = 32, cx = 15.5, cy = 15.5, rOut = 14, rIn = 9;
-const raw = Buffer.alloc(S * (S * 4 + 1));
-for (let y = 0; y < S; y++) {
-  raw[y * (S * 4 + 1)] = 0;
-  for (let x = 0; x < S; x++) {
-    const d = Math.hypot(x - cx, y - cy);
-    const a = Math.max(0, Math.min(1, Math.min(rOut - d, d - rIn) + 0.5));
-    const o = y * (S * 4 + 1) + 1 + x * 4;
-    // gap in the upper-right quadrant to read as a "consumed" ring
-    const ang = Math.atan2(y - cy, x - cx);
-    const gap = ang > -1.3 && ang < -0.2 ? 0.25 : 1;
-    raw[o] = 255; raw[o + 1] = 255; raw[o + 2] = 255; raw[o + 3] = Math.round(255 * a * gap);
-  }
+const zlib = require('node:zlib');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const crcTable = Array.from({ length: 256 }, (_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+function crc(buffer) {
+  let c = 0xffffffff;
+  for (const byte of buffer) c = crcTable[(c ^ byte) & 255] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
 }
-const crcT = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
-const crc = (b) => { let c = 0xffffffff; for (const x of b) c = crcT[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
-const chunk = (t, d) => { const l = Buffer.alloc(4); l.writeUInt32BE(d.length); const td = Buffer.concat([Buffer.from(t), d]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([l, td, c]); };
-const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(S, 0); ihdr.writeUInt32BE(S, 4); ihdr[8] = 8; ihdr[9] = 6;
-const png = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
-fs.writeFileSync(path.join(__dirname, '..', 'assets', 'tray.png'), png);
-console.log('assets/tray.png written');
+function chunk(type, data) {
+  const length = Buffer.alloc(4); length.writeUInt32BE(data.length);
+  const body = Buffer.concat([Buffer.from(type), data]);
+  const checksum = Buffer.alloc(4); checksum.writeUInt32BE(crc(body));
+  return Buffer.concat([length, body, checksum]);
+}
+function createIcon(size, appIcon) {
+  const raw = Buffer.alloc(size * (size * 4 + 1));
+  const center = (size - 1) / 2;
+  const outer = size * 0.43;
+  const inner = size * 0.28;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const offset = y * (size * 4 + 1) + 1 + x * 4;
+      const distance = Math.hypot(x - center, y - center);
+      const edge = Math.max(0, Math.min(1, Math.min(outer - distance, distance - inner) + 0.5));
+      const angle = Math.atan2(y - center, x - center);
+      const gap = angle > -1.3 && angle < -0.2 ? 0.22 : 1;
+      const background = appIcon && distance < size * 0.48 ? Math.max(0, Math.min(1, size * 0.48 - distance + 0.5)) : 0;
+      raw[offset] = appIcon ? 20 : 255;
+      raw[offset + 1] = appIcon ? 184 : 255;
+      raw[offset + 2] = appIcon ? 166 : 255;
+      raw[offset + 3] = Math.round(255 * Math.max(background * 0.30, edge * gap));
+    }
+  }
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(size, 0); header.writeUInt32BE(size, 4); header[8] = 8; header[9] = 6;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', header), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+}
+const assets = path.join(__dirname, '..', 'assets');
+fs.writeFileSync(path.join(assets, 'tray.png'), createIcon(32, false));
+fs.writeFileSync(path.join(assets, 'app.png'), createIcon(256, true));
+console.log('assets/tray.png and assets/app.png written');

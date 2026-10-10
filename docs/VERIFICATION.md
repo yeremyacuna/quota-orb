@@ -4,8 +4,9 @@ Fecha: 9 de octubre de 2026 (America/Lima).
 
 ## Comprobado en Windows
 
-- 14 pruebas automatizadas pasan: tiempo, colores, JSONL, ventanas semanales, reset pasado, datos ausentes, formatos Claude y servidor HTTP.
-- Compilación de la carpeta ejecutable con Electron 44.7.0 y electron-builder 26.15.3.
+- 15 pruebas automatizadas pasan: tiempo, colores, JSONL, selección por marca de tiempo interna, ventanas semanales, reset pasado, datos ausentes, formatos Claude y servidor HTTP.
+- Compilación del instalador NSIS x64 con Electron 44.7.0 y electron-builder 26.15.3.
+- Comparación contra sesiones reales concurrentes: el lector corregido devuelve 86 % semanal restante, coincidente con Codex, en lugar del 90 % de un evento anterior.
 - Apertura del ejecutable real: visible, always-on-top activo, dos columnas y puente IPC disponible. Tamaño observado: 140 × 106 píxeles.
 - Bandeja creada; el evento de clic alterna ocultar/mostrar en una comprobación programática (no clic manual).
 - `getLoginItemSettings().openAtLogin` devuelve true. No se reinició Windows ni se cerró la sesión para comprobar el arranque posterior.

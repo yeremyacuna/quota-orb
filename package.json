@@ -23,8 +23,23 @@
       "package.json"
     ],
     "win": {
-      "target": "dir",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/app.png",
+      "artifactName": "QuotaOrb-Setup-${version}-${arch}.${ext}",
       "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Quota Orb",
+      "deleteAppDataOnUninstall": false
     }
   },
   "allowScripts": {

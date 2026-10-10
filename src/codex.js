@@ -8,7 +8,7 @@ const { clampPct } = require('./lib/format');
 
 const WEEK_MINUTES = 10080; // 300 = 5-hour window
 const TAIL_BYTES = 512 * 1024;
-const MAX_FILES = 6;
+const MAX_FILES = 24;
 
 function codexHome() {
   return process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
@@ -58,6 +58,11 @@ function readTail(file, bytes = TAIL_BYTES) {
 
 /** Last "rate_limits" object found at the end of a JSONL text, or null. */
 function lastRateLimits(text) {
+  return lastRateLimitEvent(text)?.rateLimits ?? null;
+}
+
+/** Last limits event plus its own timestamp; file mtimes are unreliable across resumed chats. */
+function lastRateLimitEvent(text) {
   const lines = text.split('\n');
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i];
@@ -65,7 +70,10 @@ function lastRateLimits(text) {
     try {
       const obj = JSON.parse(line);
       const rl = obj?.payload?.rate_limits ?? obj?.rate_limits;
-      if (rl && typeof rl === 'object') return rl;
+      if (rl && typeof rl === 'object') {
+        const timestampMs = Date.parse(obj?.timestamp ?? obj?.payload?.timestamp ?? '');
+        return { rateLimits: rl, timestampMs: Number.isFinite(timestampMs) ? timestampMs : null };
+      }
     } catch { /* partial or foreign line */ }
   }
   return null;
@@ -87,11 +95,15 @@ function weeklyFrom(rl, nowMs = Date.now()) {
 function getCodexUsage(nowMs = Date.now()) {
   const files = recentSessionFiles();
   if (!files.length) return { status: 'nodata', hint: 'Sin sesiones de Codex todavía.' };
-  for (const f of files) {
-    const rl = lastRateLimits(readTail(f));
-    if (rl) return weeklyFrom(rl, nowMs);
+  let newest = null;
+  for (const file of files) {
+    const event = lastRateLimitEvent(readTail(file));
+    if (!event || weeklyFrom(event.rateLimits, nowMs).status !== 'ok') continue;
+    const observedAt = event.timestampMs ?? mtime(file);
+    if (!newest || observedAt > newest.observedAt) newest = { ...event, observedAt };
   }
+  if (newest) return weeklyFrom(newest.rateLimits, nowMs);
   return { status: 'nodata', hint: 'Aún no hay datos de límites en las sesiones recientes.' };
 }
 
-module.exports = { getCodexUsage, lastRateLimits, weeklyFrom, WEEK_MINUTES };
+module.exports = { getCodexUsage, lastRateLimits, lastRateLimitEvent, weeklyFrom, WEEK_MINUTES };

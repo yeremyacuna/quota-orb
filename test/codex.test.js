@@ -4,7 +4,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { lastRateLimits, weeklyFrom, getCodexUsage } = require('../src/codex');
+const { lastRateLimits, lastRateLimitEvent, weeklyFrom, getCodexUsage } = require('../src/codex');
 
 const line = (rl) => JSON.stringify({ type: 'event_msg', payload: { type: 'token_count', rate_limits: rl } });
 const NOW = 1_800_000_000_000;
@@ -12,6 +12,12 @@ const NOW = 1_800_000_000_000;
 test('lastRateLimits takes the LAST line and ignores junk', () => {
   const text = [line({ primary: { used_percent: 1 } }), 'not json "rate_limits"', line({ primary: { used_percent: 9 } }), '{"x":1}'].join('\n');
   assert.strictEqual(lastRateLimits(text).primary.used_percent, 9);
+});
+
+test('lastRateLimitEvent retains the event timestamp', () => {
+  const timestamp = '2026-10-10T04:17:32.195Z';
+  const text = JSON.stringify({ timestamp, payload: { rate_limits: { secondary: { used_percent: 14 } } } });
+  assert.strictEqual(lastRateLimitEvent(text).timestampMs, Date.parse(timestamp));
 });
 
 test('weekly window is found by window_minutes, whichever slot holds it', () => {
